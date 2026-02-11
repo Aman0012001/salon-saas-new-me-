@@ -60,7 +60,7 @@ export function EditStaffDialog({ staff, isOpen, onClose, onSuccess, canEditRole
         email: staff.email || "",
         phone: initialPhone.number,
         countryCode: initialPhone.code,
-        role: (staff.role || "staff") as "manager" | "staff",
+        role: (staff.role || "staff") as "staff",
         commission: staff.commission_percentage?.toString() || "0",
         specializations: Array.isArray(staff.specializations)
             ? staff.specializations.join(", ")
@@ -98,7 +98,7 @@ export function EditStaffDialog({ staff, isOpen, onClose, onSuccess, canEditRole
             email: staff.email || "",
             phone: phone.number,
             countryCode: phone.code,
-            role: (staff.role || "staff") as "manager" | "staff",
+            role: (staff.role || "staff") as "staff",
             commission: staff.commission_percentage?.toString() || "0",
             specializations: Array.isArray(staff.specializations)
                 ? staff.specializations.join(", ")
@@ -232,14 +232,13 @@ export function EditStaffDialog({ staff, isOpen, onClose, onSuccess, canEditRole
                             <Label htmlFor="edit-role" className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F2A93B] ml-1">Access Designation</Label>
                             <Select
                                 value={formData.role}
-                                onValueChange={(v: "manager" | "staff") => setFormData(prev => ({ ...prev, role: v }))}
+                                onValueChange={(v: "staff") => setFormData(prev => ({ ...prev, role: v }))}
                                 disabled={!canEditRole}
                             >
                                 <SelectTrigger className="h-14 bg-slate-50 border-slate-100 rounded-xl font-bold px-5 focus:ring-2 focus:ring-[#F2A93B]/10 transition-all text-slate-700">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-none shadow-2xl bg-white">
-                                    <SelectItem value="manager" className="font-bold py-3 rounded-xl">MANAGER</SelectItem>
                                     <SelectItem value="staff" className="font-bold py-3 rounded-xl">STAFF MEMBER</SelectItem>
                                 </SelectContent>
                             </Select>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Users,
   Search,
@@ -84,6 +84,9 @@ export default function CustomersPage() {
   });
   const [sortBy, setSortBy] = useState<"visits" | "spent" | "recent">("visits");
   const [showSearch, setShowSearch] = useState(false);
+  const location = useLocation();
+  const isStaffMode = location.pathname.startsWith("/staff");
+  const [staffProfileId, setStaffProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -131,6 +134,7 @@ export default function CustomersPage() {
       await api.bookings.create({
         salon_id: currentSalon.id,
         service_id: addFormData.initial_service,
+        staff_id: isStaffMode ? staffProfileId : null,
         status: "completed",
         booking_date: new Date().toISOString().split('T')[0],
         booking_time: "12:00",
@@ -165,8 +169,28 @@ export default function CustomersPage() {
 
     setLoading(true);
     try {
-      // Get all bookings for this salon from the PHP API
-      const bookings = await api.bookings.getAll({ salon_id: currentSalon.id });
+      let staffId = staffProfileId;
+
+      // If in staff mode and don't have staff ID yet, fetch it
+      if (isStaffMode && !staffId && user) {
+        try {
+          const staffData = await api.staff.getMe(currentSalon.id);
+          if (staffData?.id) {
+            staffId = staffData.id;
+            setStaffProfileId(staffId);
+          }
+        } catch (err) {
+          console.error("Failed to fetch staff profile:", err);
+        }
+      }
+
+      // Get bookings for this salon, filtered by staff if in staff mode
+      const filters: any = { salon_id: currentSalon.id };
+      if (isStaffMode && staffId) {
+        filters.staff_id = staffId;
+      }
+
+      const bookings = await api.bookings.getAll(filters);
 
       if (!bookings || bookings.length === 0) {
         setCustomers([]);
@@ -233,7 +257,7 @@ export default function CustomersPage() {
 
   useEffect(() => {
     fetchCustomers();
-  }, [currentSalon, sortBy]);
+  }, [currentSalon, sortBy, isStaffMode]);
 
   const getCustomerTier = (totalSpent: number) => {
     if (totalSpent >= 10000) return {
@@ -531,7 +555,7 @@ export default function CustomersPage() {
                   return (
                     <div
                       key={customer.user_id}
-                      onClick={() => navigate(`/salon/customers/${customer.user_id}`)}
+                      onClick={() => navigate(`${isStaffMode ? '/staff' : '/salon'}/customers/${customer.user_id}`)}
                       className={`group flex items-center ${isMobile ? 'gap-3 p-3' : 'gap-4 p-4'} rounded-lg bg-gradient-to-r from-secondary/10 to-secondary/5 hover:from-secondary/20 hover:to-secondary/10 transition-all duration-200 border border-border/20 hover:border-border/40 cursor-pointer`}
                     >
                       <Avatar className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} ring-2 ring-accent/20`}>
@@ -628,14 +652,14 @@ export default function CustomersPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="hover:bg-secondary/50"
-                            onClick={() => navigate(`/salon/customers/${customer.user_id}`)}
+                            onClick={() => navigate(`${isStaffMode ? '/staff' : '/salon'}/customers/${customer.user_id}`)}
                           >
                             <Users className="w-4 h-4 mr-2" />
                             View Customer Details
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="hover:bg-secondary/50"
-                            onClick={() => navigate(`/salon/customers/${customer.user_id}`)}
+                            onClick={() => navigate(`${isStaffMode ? '/staff' : '/salon'}/customers/${customer.user_id}`)}
                           >
                             <ChevronRight className="w-4 h-4 mr-2" />
                             View History

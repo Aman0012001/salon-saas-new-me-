@@ -617,6 +617,10 @@ export const staffProfilesAPI = {
         const data = await fetchWithAuth(`/staff/available-specialists?${query}`);
         return toArray(data, 'specialists');
     },
+
+    async delete(id: string) {
+        await fetchWithAuth(`/staff/${id}`, { method: 'DELETE' });
+    },
 };
 
 // Notifications API

@@ -49,6 +49,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ResponsiveDashboardLayout } from "@/components/dashboard/ResponsiveDashboardLayout";
@@ -943,13 +954,34 @@ export default function ServicesPage() {
                             {isOwner && (
                               <>
                                 <DropdownMenuSeparator className="my-1 opacity-50" />
-                                <DropdownMenuItem
-                                  className="text-destructive hover:bg-destructive/10 rounded-xl py-3 font-bold"
-                                  onClick={() => deleteService(service.id)}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-3" />
-                                  Delete Service
-                                </DropdownMenuItem>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem
+                                      onSelect={(e) => e.preventDefault()}
+                                      className="text-destructive hover:bg-destructive/10 rounded-xl py-3 font-bold"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-3" />
+                                      Delete Service
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle className="text-2xl font-black tracking-tight text-slate-900">Are you absolutely sure?</AlertDialogTitle>
+                                      <AlertDialogDescription className="text-slate-500 font-medium leading-relaxed">
+                                        This will permanently remove <span className="font-bold text-slate-900">{service.name}</span> from your service menu. This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter className="gap-2">
+                                      <AlertDialogCancel className="rounded-xl font-bold border-slate-200">Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteService(service.id)}
+                                        className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-black"
+                                      >
+                                        Yes, Delete Service
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </>
                             )}
                           </DropdownMenuContent>

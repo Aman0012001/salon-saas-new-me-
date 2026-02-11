@@ -300,6 +300,16 @@ const App = () => {
                         <StaffMessagesPage />
                       </RoleProtectedRoute>
                     } />
+                    <Route path="/staff/customers" element={
+                      <RoleProtectedRoute allowedRole="STAFF">
+                        <CustomersPage />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/staff/customers/:userId" element={
+                      <RoleProtectedRoute allowedRole="STAFF">
+                        <CustomerDetailsPage />
+                      </RoleProtectedRoute>
+                    } />
                     <Route path="/staff/profile/:id" element={
                       <RoleProtectedRoute allowedRole="STAFF">
                         <StaffDetailsPage />

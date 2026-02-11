@@ -181,6 +181,7 @@ export default function DashboardHome() {
     }
   };
 
+
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
@@ -503,38 +504,6 @@ export default function DashboardHome() {
               ))}
             </div>
 
-            {isOwner && (
-              <Card className="border-none bg-[#F2A93B] rounded-[2rem] p-7 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="space-y-4 relative z-10">
-                  <div className="flex items-center justify-between">
-                    <div className="p-2 bg-white/20 rounded-xl text-white">
-                      <Zap className="w-4 h-4" />
-                    </div>
-                    <Badge className="bg-white/20 text-white border-0 font-bold text-[9px] px-2 py-0.5 tracking-wider">
-                      {subscription?.plan_name || 'FREE PLAN'}
-                    </Badge>
-                  </div>
-                  <div className="space-y-1 text-white">
-                    <h4 className="font-bold text-sm">Current Authority</h4>
-                    <div className="text-[10px] font-medium text-white/80 leading-relaxed space-y-1">
-                      {subscription ? (
-                        <>
-                          <div className="flex justify-between">
-                            <span>Staff Limit:</span>
-                            <span>{subscription.current_staff_count} / {subscription.max_staff}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Service Limit:</span>
-                            <span>{subscription.current_service_count} / {subscription.max_services}</span>
-                          </div>
-                        </>
-                      ) : "Free Plan Limits Active"}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
 
             {!isOwner && !isStaff && (
               <Card className="border-none bg-[#F2A93B] rounded-[2rem] p-7 text-white relative overflow-hidden">

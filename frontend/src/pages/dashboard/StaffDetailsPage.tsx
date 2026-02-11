@@ -17,8 +17,20 @@ import {
     MapPin,
     ArrowLeft,
     Eye,
-    EyeOff
+    EyeOff,
+    Trash2
 } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +40,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format } from "date-fns";
 import api from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { useSalon } from "@/hooks/useSalon";
 import { StaffMember } from "@/types/staff";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,6 +56,7 @@ export default function StaffDetailsPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { isOwner } = useSalon();
 
     const [staff, setStaff] = useState<StaffMember | null>(null);
     const [loading, setLoading] = useState(true);
@@ -162,6 +176,24 @@ export default function StaffDetailsPage() {
         }
     };
 
+    const handleDelete = async () => {
+        if (!id) return;
+        try {
+            await api.staff.delete(id);
+            toast({
+                title: "Profile Terminated",
+                description: "The staff record has been permanently removed from the registry."
+            });
+            navigate("/salon/staff");
+        } catch (error: any) {
+            toast({
+                title: "Deletion Failed",
+                description: error.message || "Could not delete staff record.",
+                variant: "destructive"
+            });
+        }
+    };
+
     if (loading && !staff) {
         return (
             <ResponsiveDashboardLayout showBackButton={true}>
@@ -245,6 +277,37 @@ export default function StaffDetailsPage() {
                                 >
                                     Edit Profile
                                 </Button>
+
+                                {isOwner && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                className="h-12 px-8 border-rose-200 text-rose-600 font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl hover:bg-rose-50 hover:text-rose-700 transition-all active:scale-95"
+                                            >
+                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                Delete Profile
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle className="text-2xl font-black tracking-tight text-slate-900">Final Confirmation Required</AlertDialogTitle>
+                                                <AlertDialogDescription className="text-slate-500 font-medium">
+                                                    You are about to permanently delete <span className="font-bold text-slate-900">{staff.display_name}</span> from the salon. This action will purge all associated profile records and cannot be reversed.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter className="gap-2">
+                                                <AlertDialogCancel className="rounded-xl font-bold border-slate-200 text-slate-500">Cancel & Retain</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={handleDelete}
+                                                    className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black border-none"
+                                                >
+                                                    Confirm Deletion
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -839,7 +902,6 @@ export default function StaffDetailsPage() {
                                         </SelectTrigger>
                                         <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
                                             <SelectItem value="staff">Staff Operative</SelectItem>
-                                            <SelectItem value="manager">Command Manager</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

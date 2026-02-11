@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
     Send,
     Smile,
@@ -30,6 +30,7 @@ import {
     TrendingUp,
     Settings,
     Star,
+    Sparkles,
     Image as ImageIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -92,6 +93,8 @@ export default function CustomerDetailsPage() {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { currentSalon } = useSalon();
+    const location = useLocation();
+    const isStaffMode = location.pathname.startsWith("/staff");
 
     const [profile, setProfile] = useState<CustomerProfile | null>(null);
     const [bookings, setBookings] = useState<Booking[]>([]);
@@ -107,6 +110,7 @@ export default function CustomerDetailsPage() {
     const [allergies, setAllergies] = useState("");
     const [skinIssues, setSkinIssues] = useState("");
     const [savingCRM, setSavingCRM] = useState(false);
+    const [treatments, setTreatments] = useState<any[]>([]);
 
     // Treatment Record States
     const [isTreatmentDialogOpen, setIsTreatmentDialogOpen] = useState(false);
@@ -121,7 +125,9 @@ export default function CustomerDetailsPage() {
         follow_up_reminder_date: "",
         marketing_notes: "",
         before_photo_url: "",
-        after_photo_url: ""
+        after_photo_url: "",
+        service_name_manual: "",
+        record_date: new Date().toISOString().split('T')[0]
     });
     const [savingTreatment, setSavingTreatment] = useState(false);
 
@@ -176,6 +182,14 @@ export default function CustomerDetailsPage() {
                 setPurchases(purchasesData || []);
             } catch (err) {
                 console.warn("Error fetching purchases:", err);
+            }
+
+            // Fetch Treatment History
+            try {
+                const treatmentsData = await api.customerRecords.getUserTreatments(userId, currentSalon.id);
+                setTreatments(treatmentsData?.treatments || []);
+            } catch (err) {
+                console.warn("Error fetching treatments:", err);
             }
 
             // Handle query parameters for direct record opening
@@ -290,7 +304,9 @@ export default function CustomerDetailsPage() {
                     follow_up_reminder_date: data.record.follow_up_reminder_date || "",
                     marketing_notes: data.record.marketing_notes || "",
                     before_photo_url: data.record.before_photo_url || "",
-                    after_photo_url: data.record.after_photo_url || ""
+                    after_photo_url: data.record.after_photo_url || "",
+                    service_name_manual: data.record.service_name_manual || "",
+                    record_date: data.record.record_date || (booking.booking_date ? format(new Date(booking.booking_date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'))
                 });
             } else {
                 setTreatmentData({
@@ -303,7 +319,9 @@ export default function CustomerDetailsPage() {
                     follow_up_reminder_date: "",
                     marketing_notes: "",
                     before_photo_url: "",
-                    after_photo_url: ""
+                    after_photo_url: "",
+                    service_name_manual: "",
+                    record_date: booking.booking_date ? format(new Date(booking.booking_date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
                 });
             }
         } catch (error) {
@@ -347,7 +365,9 @@ export default function CustomerDetailsPage() {
             }
 
             await api.customerRecords.saveTreatmentRecord({
-                booking_id: selectedBooking.id,
+                booking_id: selectedBooking?.id || null,
+                user_id: userId,
+                salon_id: currentSalon.id,
                 ...treatmentData
             });
             toast({
@@ -355,6 +375,10 @@ export default function CustomerDetailsPage() {
                 description: "Treatment record updated successfully.",
             });
             setIsTreatmentDialogOpen(false);
+
+            // Refresh treatments
+            const treatmentsData = await api.customerRecords.getUserTreatments(userId, currentSalon.id);
+            setTreatments(treatmentsData?.treatments || []);
         } catch (error) {
             toast({
                 title: "Error",
@@ -414,7 +438,7 @@ export default function CustomerDetailsPage() {
                         <User className="w-8 h-8 text-slate-400" />
                     </div>
                     <h2 className="text-xl font-bold text-slate-700">Dossier Missing</h2>
-                    <Button onClick={() => navigate("/salon/customers")} variant="outline">
+                    <Button onClick={() => navigate(isStaffMode ? "/staff/customers" : "/salon/customers")} variant="outline">
                         <ArrowLeft className="w-4 h-4 mr-2" /> Return
                     </Button>
                 </div>
@@ -438,7 +462,7 @@ export default function CustomerDetailsPage() {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => navigate("/salon/customers")}
+                                onClick={() => navigate(isStaffMode ? "/staff/customers" : "/salon/customers")}
                                 className="text-white hover:bg-white/10"
                             >
                                 <ArrowLeft className="w-5 h-5" />
@@ -517,34 +541,90 @@ export default function CustomerDetailsPage() {
                             </Card>
                         </div>
 
-                        {/* History Card (Right) */}
+                        {/* History & Clinical Tabs (Right) */}
                         <div className="lg:col-span-5">
                             <Card className="h-full border border-slate-300 shadow-sm bg-[#F9FAFB] rounded-lg">
-                                <CardHeader className="py-3 px-4 border-b border-slate-200 bg-[#F3F4F6] rounded-t-lg">
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle className="text-sm font-bold text-[#1e3a8a] uppercase tracking-wider">Appointment History</CardTitle>
-                                        <Button variant="ghost" size="sm" className="h-6 text-xs text-slate-500" onClick={() => setIsBookingOpen(true)}>+ New</Button>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="max-h-[280px] overflow-y-auto">
-                                        {bookings.length === 0 ? (
-                                            <div className="p-6 text-center text-slate-400 text-sm italic">No history available.</div>
-                                        ) : (
-                                            <table className="w-full text-sm text-left">
-                                                <tbody className="divide-y divide-slate-200">
-                                                    {bookings.map((b) => (
-                                                        <tr key={b.id} className="hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => handleOpenTreatmentRecord(b)}>
-                                                            <td className="py-3 px-4 font-medium text-slate-600">{format(new Date(b.booking_date), 'MM/dd/yyyy')}</td>
-                                                            <td className="py-3 px-4 text-slate-900 font-semibold truncate max-w-[120px]">{b.service_name || "Service"}</td>
-                                                            <td className="py-3 px-4 text-right font-bold text-slate-700">${b.price}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        )}
-                                    </div>
-                                </CardContent>
+                                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                    <TabsList className="w-full bg-[#F3F4F6] border-b border-slate-200 rounded-t-lg rounded-b-none justify-start px-4 h-11">
+                                        <TabsTrigger value="history" className="text-xs font-bold uppercase tracking-wider h-8 data-[state=active]:bg-white">History</TabsTrigger>
+                                        <TabsTrigger value="clinical" className="text-xs font-bold uppercase tracking-wider h-8 data-[state=active]:bg-white">Clinical</TabsTrigger>
+                                    </TabsList>
+
+                                    <TabsContent value="history" className="p-0 m-0">
+                                        <div className="max-h-[500px] overflow-y-auto">
+                                            {bookings.length === 0 ? (
+                                                <div className="p-6 text-center text-slate-400 text-sm italic">No history available.</div>
+                                            ) : (
+                                                <table className="w-full text-sm text-left">
+                                                    <tbody className="divide-y divide-slate-200">
+                                                        {bookings.map((b) => (
+                                                            <tr key={b.id} className="hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => handleOpenTreatmentRecord(b)}>
+                                                                <td className="py-3 px-4 font-medium text-slate-600">{format(new Date(b.booking_date), 'MM/dd/yyyy')}</td>
+                                                                <td className="py-3 px-4 text-slate-900 font-semibold truncate max-w-[120px]">{b.service_name || "Service"}</td>
+                                                                <td className="py-3 px-4 text-right font-bold text-slate-700">${b.price}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
+                                    </TabsContent>
+
+                                    <TabsContent value="clinical" className="p-4 m-0 space-y-6">
+                                        {/* Simplified Health Summary info in tab */}
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {dob && <Badge variant="outline" className="bg-white">Age: {new Date().getFullYear() - new Date(dob).getFullYear()}</Badge>}
+                                            {skinType && <Badge variant="outline" className="bg-white">Skin: {skinType}</Badge>}
+                                            {allergies && <Badge variant="destructive" className="bg-rose-50 text-rose-700 border-rose-100">Allergy: {allergies.split(',')[0]}</Badge>}
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Treatment Timeline</h3>
+                                                <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold uppercase" onClick={() => {
+                                                    setSelectedBooking(null);
+                                                    setTreatmentData({
+                                                        treatment_details: "",
+                                                        products_used: "",
+                                                        skin_reaction: "",
+                                                        improvement_notes: "",
+                                                        recommended_next_treatment: "",
+                                                        post_treatment_instructions: "",
+                                                        follow_up_reminder_date: "",
+                                                        marketing_notes: "",
+                                                        before_photo_url: "",
+                                                        after_photo_url: "",
+                                                        service_name_manual: "",
+                                                        record_date: format(new Date(), 'yyyy-MM-dd')
+                                                    });
+                                                    setIsTreatmentDialogOpen(true);
+                                                }}>
+                                                    <Plus className="w-3 h-3 mr-1" /> New Entry
+                                                </Button>
+                                            </div>
+
+                                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                                                {treatments.length === 0 ? (
+                                                    <div className="text-center py-8 text-slate-400 italic text-xs">No clinical records found.</div>
+                                                ) : (
+                                                    treatments.map((tr, idx) => (
+                                                        <div key={tr.id} className="relative pl-6 border-l-2 border-slate-200 py-1">
+                                                            <div className="absolute -left-[9px] top-2 w-4 h-4 rounded-full bg-slate-200 border-2 border-white" />
+                                                            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleOpenTreatmentRecord({ id: tr.booking_id, service_name: tr.service_name || tr.service_name_manual, booking_date: tr.booking_date || tr.record_date || tr.created_at } as any)}>
+                                                                <div className="flex justify-between items-start mb-1">
+                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{format(new Date(tr.booking_date || tr.record_date || tr.created_at), 'MMM dd, yyyy')}</span>
+                                                                    {tr.before_photo_url && tr.after_photo_url && <Sparkles className="w-3 h-3 text-emerald-500" />}
+                                                                </div>
+                                                                <h4 className="font-bold text-slate-900 text-sm">{tr.service_name || tr.service_name_manual || "General Record"}</h4>
+                                                                <p className="text-xs text-slate-500 line-clamp-2 mt-1">{tr.treatment_details || "No details provided."}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    </TabsContent>
+                                </Tabs>
                             </Card>
                         </div>
                     </div>
@@ -683,17 +763,43 @@ export default function CustomerDetailsPage() {
             <Dialog open={isTreatmentDialogOpen} onOpenChange={setIsTreatmentDialogOpen}>
                 <DialogContent className="max-w-2xl bg-white rounded-lg p-0 overflow-hidden max-h-[90vh] flex flex-col">
                     <DialogHeader className="p-6 pb-2 shrink-0">
-                        <DialogTitle className="text-xl font-bold text-[#1e3a8a]">Treatment Record</DialogTitle>
+                        <DialogTitle className="text-xl font-bold text-[#1e3a8a]">
+                            {selectedBooking ? "Treatment Record" : "New Clinical Entry"}
+                        </DialogTitle>
                         <DialogDescription>
-                            Details for {selectedBooking?.service_name} on {selectedBooking && format(new Date(selectedBooking.booking_date), 'MM/dd/yyyy')}
+                            {selectedBooking
+                                ? `Details for ${selectedBooking.service_name} on ${format(new Date(selectedBooking.booking_date), 'MM/dd/yyyy')}`
+                                : "Add notes or a procedure that wasn't tied to a specific appointment."}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto p-6 pt-2">
-                        {/* Patient Context */}
+                        {/* Patient Context & Procedure Info */}
                         <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            {!selectedBooking && (
+                                <>
+                                    <div className="col-span-2">
+                                        <Label className="uppercase text-xs font-bold text-slate-500 mb-1 block">Procedure / Service Name</Label>
+                                        <Input
+                                            value={treatmentData.service_name_manual}
+                                            onChange={(e) => setTreatmentData({ ...treatmentData, service_name_manual: e.target.value })}
+                                            placeholder="e.g. Skin Analysis, Consultation"
+                                            className="bg-white"
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Label className="uppercase text-xs font-bold text-slate-500 mb-1 block">Date of Record</Label>
+                                        <Input
+                                            type="date"
+                                            value={treatmentData.record_date}
+                                            onChange={(e) => setTreatmentData({ ...treatmentData, record_date: e.target.value })}
+                                            className="bg-white"
+                                        />
+                                    </div>
+                                </>
+                            )}
                             <div>
-                                <Label className="uppercase text-xs font-bold text-slate-500 mb-1 block">Date of Birth</Label>
+                                <Label className="uppercase text-xs font-bold text-slate-500 mb-1 block">Patient DOB</Label>
                                 <Input
                                     type="date"
                                     value={dob}
@@ -711,18 +817,18 @@ export default function CustomerDetailsPage() {
                                 />
                             </div>
                             <div className="col-span-2">
-                                <Label className="uppercase text-xs font-bold text-slate-500 mb-1 block">Clinical Notes (Allergies & Skin Issues)</Label>
+                                <Label className="uppercase text-xs font-bold text-slate-500 mb-1 block">Critical Health Notes (Allergies & Issues)</Label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <Input
                                         value={allergies}
                                         onChange={(e) => setAllergies(e.target.value)}
-                                        placeholder="Allergies (comma separated)"
+                                        placeholder="Allergies"
                                         className="bg-white"
                                     />
                                     <Input
                                         value={skinIssues}
                                         onChange={(e) => setSkinIssues(e.target.value)}
-                                        placeholder="Skin Issues (e.g. Acne, Eczema)"
+                                        placeholder="Skin Issues"
                                         className="bg-white"
                                     />
                                 </div>
@@ -730,13 +836,13 @@ export default function CustomerDetailsPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            {Object.keys(treatmentData).map(key => (
-                                <div key={key} className={key.includes('notes') || key.includes('instructions') ? 'col-span-2' : ''}>
+                            {Object.keys(treatmentData).filter(k => k !== 'service_name_manual' && k !== 'record_date').map(key => (
+                                <div key={key} className={key.includes('notes') || key.includes('instructions') || key.includes('details') ? 'col-span-2' : ''}>
                                     <Label className="uppercase text-xs font-bold text-slate-500 mb-1 block">{key.replace(/_/g, ' ')}</Label>
-                                    <Input
+                                    <Textarea
                                         value={(treatmentData as any)[key]}
                                         onChange={e => setTreatmentData({ ...treatmentData, [key]: e.target.value })}
-                                        className="bg-slate-50"
+                                        className="bg-slate-50 min-h-[80px]"
                                     />
                                 </div>
                             ))}

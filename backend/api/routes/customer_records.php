@@ -94,36 +94,44 @@ if ($method === 'POST' && count($uriParts) === 2 && $uriParts[1] === 'treatments
 
     $data = getRequestBody();
     $bookingId = $data['booking_id'] ?? null;
+    $salonId = $data['salon_id'] ?? null;
+    $userId = $data['user_id'] ?? null;
 
-    if (!$bookingId) {
-        sendResponse(['error' => 'Booking ID is required'], 400);
+    if (!$bookingId && (!$salonId || !$userId)) {
+        sendResponse(['error' => 'Booking ID or (Salon ID and User ID) are required'], 400);
     }
 
-    // Fetch booking to get salon_id and user_id
-    $stmt = $db->prepare("SELECT salon_id, user_id FROM bookings WHERE id = ?");
-    $stmt->execute([$bookingId]);
-    $booking = $stmt->fetch();
+    if ($bookingId) {
+        // Fetch booking to get salon_id and user_id if not provided
+        $stmt = $db->prepare("SELECT salon_id, user_id FROM bookings WHERE id = ?");
+        $stmt->execute([$bookingId]);
+        $booking = $stmt->fetch();
 
-    if (!$booking) {
-        sendResponse(['error' => 'Booking not found'], 404);
+        if (!$booking) {
+            sendResponse(['error' => 'Booking not found'], 404);
+        }
+        $salonId = $booking['salon_id'];
+        $userId = $booking['user_id'];
     }
 
     // Check permission
     $stmt = $db->prepare("SELECT id FROM user_roles WHERE user_id = ? AND salon_id = ?");
-    $stmt->execute([$userData['user_id'], $booking['salon_id']]);
+    $stmt->execute([$userData['user_id'], $salonId]);
     if (!$stmt->fetch()) {
         sendResponse(['error' => 'Forbidden'], 403);
     }
 
     $stmt = $db->prepare("
         INSERT INTO treatment_records (
-            id, booking_id, user_id, salon_id, treatment_details, products_used, 
+            id, booking_id, user_id, salon_id, service_name_manual, record_date, treatment_details, products_used, 
             skin_reaction, improvement_notes, recommended_next_treatment, 
             post_treatment_instructions, follow_up_reminder_date, marketing_notes,
             before_photo_url, before_photo_public_id, after_photo_url, after_photo_public_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE 
+            service_name_manual = VALUES(service_name_manual),
+            record_date = VALUES(record_date),
             treatment_details = VALUES(treatment_details),
             products_used = VALUES(products_used),
             skin_reaction = VALUES(skin_reaction),
@@ -141,8 +149,10 @@ if ($method === 'POST' && count($uriParts) === 2 && $uriParts[1] === 'treatments
     $stmt->execute([
         Auth::generateUuid(),
         $bookingId,
-        $booking['user_id'],
-        $booking['salon_id'],
+        $userId,
+        $salonId,
+        $data['service_name_manual'] ?? null,
+        $data['record_date'] ?? null,
         $data['treatment_details'] ?? null,
         $data['products_used'] ?? null,
         $data['skin_reaction'] ?? null,
@@ -167,8 +177,8 @@ if ($method === 'GET' && count($uriParts) === 3 && $uriParts[2] === 'treatments'
 
     $query = "SELECT tr.*, s.name as service_name, b.booking_date 
               FROM treatment_records tr
-              JOIN bookings b ON tr.booking_id = b.id
-              JOIN services s ON b.service_id = s.id
+              LEFT JOIN bookings b ON tr.booking_id = b.id
+              LEFT JOIN services s ON b.service_id = s.id
               WHERE tr.user_id = ?";
     $params = [$userId];
 
@@ -177,7 +187,7 @@ if ($method === 'GET' && count($uriParts) === 3 && $uriParts[2] === 'treatments'
         $params[] = $salonId;
     }
 
-    $query .= " ORDER BY b.booking_date DESC";
+    $query .= " ORDER BY COALESCE(b.booking_date, tr.record_date, tr.created_at) DESC";
 
     $stmt = $db->prepare($query);
     $stmt->execute($params);

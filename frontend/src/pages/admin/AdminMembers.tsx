@@ -66,11 +66,6 @@ export default function AdminMembers() {
     const [plans, setPlans] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [showAssignDialog, setShowAssignDialog] = useState(false);
-    const [selectedMember, setSelectedMember] = useState<Membership | null>(null);
-    const [selectedPlanId, setSelectedPlanId] = useState<string>("");
-    const [selectedStatus, setSelectedStatus] = useState<string>("active");
-    const [saving, setSaving] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -96,35 +91,6 @@ export default function AdminMembers() {
         fetchData();
     }, []);
 
-    const handleAssignClick = (member: Membership) => {
-        setSelectedMember(member);
-        setSelectedPlanId(member.plan_id || "");
-        setSelectedStatus(member.subscription_status || "active");
-        setShowAssignDialog(true);
-    };
-
-    const handleSaveAssignment = async () => {
-        if (!selectedMember || !selectedPlanId) {
-            toast({ title: "Required", description: "Please select a plan.", variant: "destructive" });
-            return;
-        }
-
-        setSaving(true);
-        try {
-            await api.admin.assignMembership({
-                salon_id: selectedMember.salon_id,
-                plan_id: selectedPlanId,
-                status: selectedStatus
-            });
-            toast({ title: "Success", description: "Membership updated successfully." });
-            setShowAssignDialog(false);
-            fetchData();
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to update membership.", variant: "destructive" });
-        } finally {
-            setSaving(false);
-        }
-    };
 
     const filteredMembers = memberships.filter(m =>
         m.salon_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -174,7 +140,6 @@ export default function AdminMembers() {
                                     <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8">Saloon Entity</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6">Tier Status</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6">Renewal Date</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6">Control</TableHead>
                                 </TableRow>
                             </TableHeader>
                         </Table>
@@ -222,15 +187,6 @@ export default function AdminMembers() {
                                                     </span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-6">
-                                                <Button
-                                                    onClick={() => handleAssignClick(member)}
-                                                    variant="outline"
-                                                    className="bg-gray-900 border-gray-700 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all rounded-xl font-bold text-xs"
-                                                >
-                                                    Assign Plan &rarr;
-                                                </Button>
-                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -240,67 +196,6 @@ export default function AdminMembers() {
                 </div>
             </div>
 
-            {/* Assign Modal */}
-            <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-                <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-md p-0 overflow-hidden rounded-3xl">
-                    <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-8 border-b border-gray-800">
-                        <DialogTitle className="text-2xl font-black italic tracking-tight">Modify Membership</DialogTitle>
-                        <DialogDescription className="text-gray-400 mt-2 font-medium">
-                            Adjusting permissions for <span className="text-white font-bold">{selectedMember?.salon_name}</span>
-                        </DialogDescription>
-                    </div>
-
-                    <div className="p-8 space-y-8">
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Target Plan Tier</label>
-                            <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-                                <SelectTrigger className="bg-gray-800 border-gray-700 h-14 rounded-2xl text-lg font-bold px-6">
-                                    <SelectValue placeholder="Select a Tier" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700 text-white rounded-2xl">
-                                    {plans.map(p => (
-                                        <SelectItem key={p.id} value={p.id} className="focus:bg-gray-700 font-bold p-4 rounded-xl">
-                                            {p.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Subscription Protocol</label>
-                            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                                <SelectTrigger className="bg-gray-800 border-gray-700 h-14 rounded-2xl text-lg font-bold px-6">
-                                    <SelectValue placeholder="Status" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700 text-white rounded-2xl">
-                                    <SelectItem value="active" className="font-bold p-4">Active & Verified</SelectItem>
-                                    <SelectItem value="past_due" className="font-bold p-4">Past Due</SelectItem>
-                                    <SelectItem value="trial" className="font-bold p-4">Trial Mode</SelectItem>
-                                    <SelectItem value="deactivated" className="font-bold p-4 text-red-400">Deactivated</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-
-                    <div className="p-8 bg-gray-950 border-t border-gray-800 flex gap-4">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setShowAssignDialog(false)}
-                            className="flex-1 h-14 rounded-2xl font-bold text-gray-400"
-                        >
-                            Abort
-                        </Button>
-                        <Button
-                            onClick={handleSaveAssignment}
-                            disabled={saving}
-                            className="flex-[2] h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-black rounded-2xl shadow-xl shadow-blue-500/10"
-                        >
-                            {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : "Deploy Assignment"}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
         </AdminLayout>
     );
 }

@@ -46,7 +46,7 @@ export function AddStaffDialog({ salonId, staffCount, onSuccess, trigger }: AddS
         email: "",
         phone: "",
         countryCode: "+60",
-        role: "staff" as "manager" | "staff",
+        role: "staff" as "staff",
         commission: "0",
         specializations: "",
         avatar_url: "",
@@ -141,7 +141,7 @@ export function AddStaffDialog({ salonId, staffCount, onSuccess, trigger }: AddS
                 phone: fullPhone,
                 specializations: formData.specializations.split(",").map(s => s.trim()).filter(Boolean),
                 commission_percentage: parseInt(formData.commission) || 0,
-                role: formData.role as 'manager' | 'staff',
+                role: formData.role as 'staff',
                 avatar_url: formData.avatar_url || null,
                 password: formData.password || null,
                 is_active: true,
@@ -397,13 +397,12 @@ export function AddStaffDialog({ salonId, staffCount, onSuccess, trigger }: AddS
                                     <Label htmlFor="role" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Access Level</Label>
                                     <Select
                                         value={formData.role}
-                                        onValueChange={(v: "manager" | "staff") => setFormData(prev => ({ ...prev, role: v }))}
+                                        onValueChange={(v: "staff") => setFormData(prev => ({ ...prev, role: v }))}
                                     >
                                         <SelectTrigger className="h-12 bg-slate-50 border-slate-100 rounded-xl font-semibold px-4 focus:ring-2 focus:ring-[#F2A93B]/10 transition-all">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl border-none shadow-2xl bg-white">
-                                            <SelectItem value="manager" className="font-semibold py-2.5 rounded-xl">Manager</SelectItem>
                                             <SelectItem value="staff" className="font-semibold py-2.5 rounded-xl">Staff Member</SelectItem>
                                         </SelectContent>
                                     </Select>

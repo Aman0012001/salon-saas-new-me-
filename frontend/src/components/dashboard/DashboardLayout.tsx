@@ -140,6 +140,12 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         description: "Check-in/out"
       },
       {
+        icon: Users,
+        label: "My Customers",
+        path: "/staff/customers",
+        description: "Client management"
+      },
+      {
         icon: BookOpen,
         label: "Leaves",
         path: "/staff/leaves",

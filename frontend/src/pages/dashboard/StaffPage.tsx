@@ -14,8 +14,20 @@ import {
   UserCircle,
   History,
   Layout,
-  Eye
+  Eye,
+  Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,7 +68,7 @@ export default function StaffPage() {
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"ALL" | "ACTIVE" | "INACTIVE" | "TERMINATED" | "MANAGERS" | "STAFF">("ACTIVE");
+  const [activeTab, setActiveTab] = useState<"ALL" | "ACTIVE" | "INACTIVE" | "TERMINATED" | "STAFF">("ACTIVE");
   const [subTab, setSubTab] = useState<"DETAILS" | "LOGS">("DETAILS");
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,6 +104,26 @@ export default function StaffPage() {
     }
   }, [currentSalon, toast, selectedStaffId]);
 
+  const handleDeleteStaff = async (id: string) => {
+    try {
+      await api.staff.delete(id);
+      toast({
+        title: "Staff Member Removed",
+        description: "The staff record has been successfully deleted.",
+      });
+      fetchStaff();
+      if (selectedStaffId === id) {
+        setSelectedStaffId(null);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Deletion Failed",
+        description: error.message || "Could not delete staff member.",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
   }, [user, authLoading, navigate]);
@@ -111,7 +143,6 @@ export default function StaffPage() {
         (activeTab === "ACTIVE" && s.is_active) ||
         (activeTab === "INACTIVE" && !s.is_active) ||
         (activeTab === "TERMINATED" && false) || // Mocking terminated
-        (activeTab === "MANAGERS" && s.role === "manager") ||
         (activeTab === "STAFF" && s.role === "staff");
 
       const q = searchQuery.toLowerCase();
@@ -127,7 +158,6 @@ export default function StaffPage() {
     ACTIVE: staff.filter(s => s.is_active).length,
     INACTIVE: staff.filter(s => !s.is_active).length,
     TERMINATED: 0,
-    MANAGERS: staff.filter(s => s.role === "manager").length,
     STAFF: staff.filter(s => s.role === "staff").length,
   }), [staff]);
 
@@ -208,13 +238,6 @@ export default function StaffPage() {
 
                 <DropdownMenuSeparator className="bg-slate-100" />
 
-                <DropdownMenuItem onClick={() => setActiveTab("MANAGERS")} className="rounded-xl py-3 px-3 cursor-pointer focus:bg-amber-50 group">
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs font-bold text-slate-700 group-hover:text-amber-600 uppercase tracking-tight">Management</span>
-                    <span className="text-[10px] font-black text-slate-300">{counts.MANAGERS}</span>
-                  </div>
-                </DropdownMenuItem>
-
                 <DropdownMenuItem onClick={() => setActiveTab("STAFF")} className="rounded-xl py-3 px-3 cursor-pointer focus:bg-amber-50 group">
                   <div className="flex items-center justify-between w-full">
                     <span className="text-xs font-bold text-slate-700 group-hover:text-amber-600 uppercase tracking-tight">Service Staff</span>
@@ -269,12 +292,70 @@ export default function StaffPage() {
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => navigate(`/salon/staff/${selectedStaff.id}`)}
-                    className="absolute top-8 right-8 bg-[#F2A93B] hover:bg-[#E29A2B] text-white font-bold h-10 px-8 rounded-md"
-                  >
-                    View
-                  </Button>
+                  <div className="absolute top-8 right-8 flex gap-2">
+                    <Button
+                      onClick={() => navigate(`/salon/staff/${selectedStaff.id}`)}
+                      className="bg-[#F2A93B] hover:bg-[#E29A2B] text-white font-bold h-10 px-8 rounded-md"
+                    >
+                      View
+                    </Button>
+
+                    {isOwner && (
+                      <AlertDialog>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-10 w-10 border-slate-200">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 p-2 rounded-xl shadow-2xl border-none">
+                            <DropdownMenuItem
+                              onClick={() => navigate(`/salon/staff/${selectedStaff.id}`)}
+                              className="rounded-lg py-2.5 font-semibold"
+                            >
+                              <Eye className="w-4 h-4 mr-2 text-slate-400" />
+                              View Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedStaffId(selectedStaff.id);
+                                setIsEditOpen(true);
+                              }}
+                              className="rounded-lg py-2.5 font-semibold"
+                            >
+                              <Edit2 className="w-4 h-4 mr-2 text-blue-500" />
+                              Edit Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="opacity-50" />
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-rose-50 rounded-lg py-2.5 font-bold">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Member
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-2xl font-black tracking-tight">Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-slate-500 font-medium">
+                              This will permanently delete <span className="font-bold text-slate-900">{selectedStaff.display_name}</span> from your salon registry. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="gap-2">
+                            <AlertDialogCancel className="rounded-xl font-bold border-slate-200">Cancel Action</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteStaff(selectedStaff.id)}
+                              className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-black"
+                            >
+                              Yes, Delete Member
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )}

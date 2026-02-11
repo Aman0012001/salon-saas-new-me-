@@ -25,40 +25,33 @@ class MembershipService
             AND (ss.subscription_end_date IS NULL OR ss.subscription_end_date > NOW())
         ");
         $stmt->execute([$salonId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$plan) {
+            // Fallback: Fetch default "Free Trial" plan limits if no record exists
+            $stmtFallback = $this->db->prepare("
+                SELECT 'free-trial-fallback' as id, ? as salon_id, id as plan_id, 'trial' as status, 
+                       name as plan_name, max_staff, max_services, features
+                FROM subscription_plans
+                WHERE slug = 'free-trial' OR slug = 'basic'
+                LIMIT 1
+            ");
+            $stmtFallback->execute([$salonId]);
+            $plan = $stmtFallback->fetch(PDO::FETCH_ASSOC);
+        }
+
+        return $plan;
     }
 
     public function canAddStaff($salonId)
     {
-        $plan = $this->getActivePlan($salonId);
-        if (!$plan)
-            return false;
-
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM staff_profiles WHERE salon_id = ?");
-        $stmt->execute([$salonId]);
-        $count = $stmt->fetchColumn();
-
-        if ($count >= $plan['max_staff']) {
-            $this->notifyUpgrade($salonId, 'staff members');
-            return false;
-        }
+        // Plan feature removed - always allow
         return true;
     }
 
     public function canAddService($salonId)
     {
-        $plan = $this->getActivePlan($salonId);
-        if (!$plan)
-            return false;
-
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM services WHERE salon_id = ?");
-        $stmt->execute([$salonId]);
-        $count = $stmt->fetchColumn();
-
-        if ($count >= $plan['max_services']) {
-            $this->notifyUpgrade($salonId, 'services');
-            return false;
-        }
+        // Plan feature removed - always allow
         return true;
     }
 
